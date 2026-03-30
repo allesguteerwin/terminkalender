@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+<pre id="out">Loading...</pre>
+<script>
+const SHEET_ID = '1wPpK_X7hPeuyEntkUrfd8fGpgfHcWUDlcdwrUYXsBi4';
+fetch('https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:json&sheet=Programme')
+  .then(function(r){ return r.text(); })
+  .then(function(raw){
+    document.getElementById('out').textContent = raw.substring(0, 500);
+  })
+  .catch(function(e){
+    document.getElementById('out').textContent = 'ERROR: ' + e;
+  });
+</script>
+</body>
+</html>
