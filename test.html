@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<body>
+<pre id="out">Loading...</pre>
+<script>
+const SHEET_ID = '1wPpK_X7hPeuyEntkUrfd8fGpgfHcWUDlcdwrUYXsBi4';
+fetch('https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:json&sheet=Termine')
+  .then(function(r){ return r.text(); })
+  .then(function(raw){
+    var start = raw.indexOf('{'), end = raw.lastIndexOf('}');
+    var json = JSON.parse(raw.substring(start, end+1));
+    var out = '';
+    // Show first 3 data rows with v and f for each cell
+    json.table.rows.slice(0,4).forEach(function(row, ri) {
+      out += 'Row ' + ri + ':\n';
+      (row.c || []).forEach(function(cell, ci) {
+        if (cell) out += '  col'+ci+': v='+JSON.stringify(cell.v)+' f='+JSON.stringify(cell.f)+'\n';
+        else out += '  col'+ci+': null\n';
+      });
+    });
+    document.getElementById('out').textContent = out;
+  })
+  .catch(function(e){ document.getElementById('out').textContent = 'ERROR: '+e; });
+</script>
+</body>
+</html>
