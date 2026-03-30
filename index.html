@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminkalender</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@100;300;400;700;900&family=Barlow:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root { --red:#e8321e; --black:#192841; --white:#ffffff; --muted:#777; --border:#2d3f57; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--black); color:var(--white); font-family:'Barlow',sans-serif; font-weight:300; }
+  .filter-bar { display:flex; padding:0 0 32px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+  .filter-btn { background:none; border:none; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-weight:400; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; padding:8px 28px 8px 0; cursor:pointer; transition:color 0.2s; position:relative; }
+  .filter-btn.active { color:var(--red); }
+  .filter-btn.active::after { content:''; position:absolute; bottom:-1px; left:0; right:28px; height:2px; background:var(--red); }
+  .filter-btn:hover { color:var(--white); }
+  .show-card { border-bottom:1px solid var(--border); animation:fadeIn 0.35s ease both; cursor:pointer; }
+  .show-card:hover .card-top, .show-card.open .card-top { background:#213452; }
+  .card-top { display:grid; grid-template-columns:200px 1fr auto; align-items:center; gap:28px; padding:32px 0; transition:background 0.2s; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .show-card:nth-child(1){animation-delay:0.04s} .show-card:nth-child(2){animation-delay:0.08s} .show-card:nth-child(3){animation-delay:0.12s} .show-card:nth-child(4){animation-delay:0.16s} .show-card:nth-child(5){animation-delay:0.20s} .show-card:nth-child(6){animation-delay:0.24s}
+  .show-thumb { position:relative; height:140px; overflow:hidden; background:#213452; flex-shrink:0; }
+  .show-thumb img { width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.4s ease; }
+  .show-card:hover .show-thumb img, .show-card.open .show-thumb img { transform:scale(1.04); }
+  .thumb-placeholder { width:100%; height:100%; background:#213452; }
+  .date-badge { position:absolute; top:10px; left:10px; background:var(--white); color:var(--black); width:66px; height:66px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:background 0.2s,color 0.2s; }
+  .show-card.open .date-badge { background:var(--red); color:var(--white); }
+  .date-month { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.16em; text-transform:uppercase; line-height:1; margin-bottom:3px; }
+  .date-day { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:30px; line-height:1; }
+  .show-summary { min-width:0; }
+  .show-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:clamp(16px,2vw,20px); text-transform:uppercase; color:var(--red); letter-spacing:0.04em; line-height:1.15; margin-bottom:6px; }
+  .show-card.past .show-title { color:#4a4a4a; }
+  .show-venue-line { font-family:'Barlow Condensed',sans-serif; font-weight:400; font-size:12px; letter-spacing:0.16em; text-transform:uppercase; color:#aaa; line-height:1.6; }
+  .show-city-line { font-family:'Barlow Condensed',sans-serif; font-weight:400; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#555; line-height:1.6; }
+  .show-card.past .show-venue-line, .show-card.past .show-city-line { color:#3a3a3a; }
+  .chevron { width:20px; height:20px; flex-shrink:0; color:#444; transition:transform 0.3s ease,color 0.2s; }
+  .show-card.open .chevron { transform:rotate(180deg); color:var(--red); }
+  .show-card:hover .chevron { color:#888; }
+  .detail-panel { display:grid; grid-template-rows:0fr; transition:grid-template-rows 0.38s ease; }
+  .show-card.open .detail-panel { grid-template-rows:1fr; }
+  .detail-inner { overflow:hidden; }
+  .detail-content { padding:0 0 32px; }
+  .detail-text { display:flex; flex-direction:column; }
+  .detail-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:clamp(18px,2.4vw,24px); text-transform:uppercase; color:var(--red); letter-spacing:0.04em; line-height:1.1; margin-bottom:18px; }
+  .show-card.past .detail-title { color:#4a4a4a; }
+  .detail-meta { font-family:'Barlow Condensed',sans-serif; font-weight:400; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:var(--white); line-height:2; margin-bottom:18px; }
+  .show-card.past .detail-meta { color:#444; }
+  .detail-meta a { color:var(--white); text-decoration:none; border-bottom:1px solid #444; transition:color 0.2s,border-color 0.2s; }
+  .detail-meta a:hover { color:var(--red); border-color:var(--red); }
+  .show-card.past .detail-meta a { color:#444; border-color:#2a2a2a; }
+  .detail-desc { font-size:14px; font-weight:300; line-height:1.75; color:#ccc; margin-bottom:18px; }
+  .detail-desc p { margin-bottom: 12px; }
+  .show-card.past .detail-desc { color:#3a3a3a; }
+  .foto-credit { font-size:11px; color:#555; letter-spacing:0.06em; margin-bottom:20px; }
+  .karten-link { display:inline-flex; align-items:center; gap:6px; color:var(--red); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; letter-spacing:0.08em; text-transform:uppercase; text-decoration:none; transition:opacity 0.2s; align-self:flex-start; margin-top:auto; }
+  .karten-link:hover { opacity:0.75; }
+  .past-heading { font-family:'Barlow Condensed',sans-serif; font-weight:300; font-size:11px; letter-spacing:0.3em; text-transform:uppercase; color:#3a3a3a; padding:40px 0 16px; }
+  .show-card.past .date-badge { background:#2a3a50; color:#555; }
+  .show-card.past .show-thumb { opacity:0.4; }
+  .show-card.past.open .date-badge { background:#2d3f57; color:#777; }
+  .empty-state, .loading { padding:48px 0; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:13px; letter-spacing:0.2em; text-transform:uppercase; display:flex; align-items:center; gap:12px; }
+  .spinner { width:14px; height:14px; border:2px solid #333; border-top-color:var(--red); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  @media (max-width:600px) {
+    .card-top { grid-template-columns:80px 1fr auto; gap:14px; padding:20px 0; }
+    .show-thumb { height:80px; }
+    .date-badge { width:48px; height:48px; }
+    .date-month { font-size:8px; }
+    .date-day { font-size:22px; }
+    .detail-content { grid-template-columns:1fr; }
+    .detail-img, .detail-img-placeholder { aspect-ratio:16/9; }
+  }
+</style>
+</head>
+<body>
+<div id="kalender-root">
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setFilter(this,'upcoming')">Kommende Termine</button>
+    <button class="filter-btn" onclick="setFilter(this,'all')">Alle Termine</button>
+  </div>
+  <div id="show-list">
+    <div class="loading"><div class="spinner"></div>Termine werden geladen …</div>
+  </div>
+</div>
+<script>
+const SHEET_ID = '1wPpK_X7hPeuyEntkUrfd8fGpgfHcWUDlcdwrUYXsBi4';
+const USE_DEMO = false;
+
+let currentFilter = 'upcoming';
+let allTermine    = [];
+let openIndex     = null;
+
+const API_URL = 'https://script.google.com/macros/s/AKfycby_mtjAjjcodlhe_zgemzDgGQ8MLkOQp47X9rZ5MPp2l8HoD025PZ2kORC1FlbSMlxY/exec';
+
+function init() {
+  fetch(API_URL)
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      allTermine = normalise(data.termine, data.programme);
+      renderCalendar();
+    })
+    .catch(function(e) {
+      document.getElementById('show-list').innerHTML =
+        '<div class="empty-state" style="color:white">Fehler: ' + e.message + '</div>';
+    });
+}
+
+
+function normalise(termine, programme) {
+  const pm = {};
+  programme.forEach(function(p) { if (p['Titel']) pm[p['Titel']] = p; });
+  return termine.map(function(t) {
+    const date = parseDate(t['Datum'] || '');
+    if (!date) return null;
+    const p = pm[t['Programm']] || {};
+    const ort = t['Ort'] || '', stadt = t['Stadt'] || '';
+    const maps = t['Maps-Link'] ||
+      'https://www.google.com/maps/search/' + encodeURIComponent(ort + ', ' + stadt + ', Österreich');
+    return {
+      date:date, programTitel:t['Programm']||'', uhrzeit:t['Uhrzeit']||'',
+      ort:ort, stadt:stadt,
+      beschreibung:p['Beschreibung']||'', langtext:p['Langtext']||'',
+      bildUrl:p['Bild-URL']||'', fotoCredit:p['Foto-Credit']||'',
+      tickets:t['Tickets']||'', mapsLink:maps
+    };
+  }).filter(Boolean).sort(function(a,b){return a.date-b.date;});
+}
+
+function parseDate(s) {
+  if (!s) return null;
+  var d;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    d = new Date(s + 'T00:00:00');
+  } else if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(s)) {
+    var parts = s.split('.');
+    d = new Date(parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0')+'T00:00:00');
+  } else { d = new Date(s); }
+  return isNaN(d.getTime()) ? null : d;
+}
+
+var MM = ['JAN','FEB','MRZ','APR','MAI','JUN','JUL','AUG','SEP','OKT','NOV','DEZ'];
+var ML = ['JANUAR','FEBRUAR','MAERZ','APRIL','MAI','JUNI','JULI','AUGUST','SEPTEMBER','OKTOBER','NOVEMBER','DEZEMBER'];
+var DL = ['SONNTAG','MONTAG','DIENSTAG','MITTWOCH','DONNERSTAG','FREITAG','SAMSTAG'];
+
+function renderCalendar() {
+  var today = new Date(); today.setHours(0,0,0,0);
+  var upcoming = allTermine.filter(function(t){return t.date>=today;});
+  var past     = allTermine.filter(function(t){return t.date<today;}).reverse();
+  var list = document.getElementById('show-list');
+  var html = '';
+  if (currentFilter === 'upcoming') {
+    html = upcoming.length
+      ? upcoming.map(function(t,i){return cardHTML(t,false,i);}).join('')
+      : '<div class="empty-state">Keine kommenden Termine.</div>';
+  } else {
+    if (!allTermine.length) {
+      html = '<div class="empty-state">Keine Termine gefunden.</div>';
+    } else {
+      html += upcoming.map(function(t,i){return cardHTML(t,false,i);}).join('');
+      if (past.length) {
+        html += '<div class="past-heading">Vergangene Termine</div>';
+        html += past.map(function(t,i){return cardHTML(t,true,upcoming.length+i);}).join('');
+      }
+    }
+  }
+  list.innerHTML = html;
+  openIndex = null;
+}
+
+function cardHTML(t, isPast, idx) {
+  var m = MM[t.date.getMonth()];
+  var day = t.date.getDate();
+  var fullDate = DL[t.date.getDay()]+', '+day+'. '+ML[t.date.getMonth()]+' '+t.date.getFullYear();
+  var locText = [t.ort,t.stadt].filter(Boolean).join(', ');
+  var thumb = t.bildUrl
+    ? '<img src="'+t.bildUrl+'" alt="'+t.programTitel+'" loading="lazy">'
+    : '<div class="thumb-placeholder"></div>';
+  var large = t.bildUrl
+    ? '<img class="detail-img" src="'+t.bildUrl+'" alt="'+t.programTitel+'" loading="lazy">'
+    : '<div class="detail-img-placeholder"></div>';
+  var karten = (!isPast && t.tickets)
+    ? '<a class="karten-link" href="'+t.tickets+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">&#9658; Karten</a>'
+    : '';
+  var bodyText = t.langtext || t.beschreibung || '';
+  var descHTML   = bodyText    ? '<div class="detail-desc"><p>'+bodyText.replace(/\r\n/g,'\n').split(/\n\n+/).map(function(p){return p.replace(/\n/g,' ').trim();}).filter(Boolean).join('</p><p>')+'</p></div>' : '';
+  var creditHTML = t.fotoCredit? '<div class="foto-credit">Foto: '+t.fotoCredit+'</div>' : '';
+  var uhrzeitHTML= t.uhrzeit   ? t.uhrzeit+' UHR<br>' : '';
+  var pastClass  = isPast ? ' past' : '';
+  return '<div class="show-card'+pastClass+'" id="card-'+idx+'" onclick="toggleCard('+idx+')">'+
+    '<div class="card-top">'+
+      '<div class="show-thumb">'+thumb+
+        '<div class="date-badge"><span class="date-month">'+m+'</span><span class="date-day">'+day+'</span></div>'+
+      '</div>'+
+      '<div class="show-summary">'+
+        '<div class="show-title">'+t.programTitel+'</div>'+
+        '<div class="show-venue-line">'+t.ort+'</div>'+
+        '<div class="show-city-line">'+t.stadt+'</div>'+
+      '</div>'+
+      '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'+
+    '</div>'+
+    '<div class="detail-panel"><div class="detail-inner"><div class="detail-content">'+
+          '<div class="detail-text">'+
+        '<div class="detail-meta">'+fullDate+'<br>'+uhrzeitHTML+
+          '<a href="'+t.mapsLink+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+locText.toUpperCase()+' (KARTE)</a>'+
+        '</div>'+
+        descHTML+creditHTML+karten+
+      '</div>'+
+    '</div></div></div>'+
+  '</div>';
+}
+
+function toggleCard(idx) {
+  var card = document.getElementById('card-'+idx);
+  if (!card) return;
+  if (openIndex !== null && openIndex !== idx) {
+    var prev = document.getElementById('card-'+openIndex);
+    if (prev) prev.classList.remove('open');
+  }
+  card.classList.toggle('open');
+  openIndex = card.classList.contains('open') ? idx : null;
+  if (card.classList.contains('open')) {
+    setTimeout(function(){ card.scrollIntoView({behavior:'smooth',block:'nearest'}); }, 50);
+  }
+}
+
+function setFilter(btn, f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  renderCalendar();
+}
+
+
+
+init();
+</script>
+</body>
+</html>
